@@ -3,7 +3,9 @@ const bcrypt = require("bcryptjs");
 require("dotenv").config();
 const User = require("./models/User");
 
-mongoose.connect("mongodb://127.0.0.1:27017/cgpa_portal")
+mongoose.connect("mongodb+srv://cgpa-user:rV.N6NVE3fLf-a2@cluster0.mongodb.net/cgpa", {
+  serverSelectionTimeoutMS: 10000
+})
 .then(async () => {
 
   const hods = [
