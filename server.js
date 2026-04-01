@@ -11,7 +11,7 @@ app.use(express.json());
 
 /* ---------- CORS ---------- */
 app.use(cors({
-  origin: true,
+  origin:'https://YOUR-NETLIFY-URL.netlify.app' ,
   credentials: true
 }));
 
@@ -32,7 +32,7 @@ app.use(session({
 app.use(express.static(path.join(__dirname, "../cgpafinal")));
 
 /* ---------- DATABASE CONNECTION ---------- */
-mongoose.connect("mongodb://127.0.0.1:27017/cgpa_portal")
+mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/cgpa_portal")
 .then(() => {
   console.log("MongoDB Connected");
 })
