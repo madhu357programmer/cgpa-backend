@@ -48,6 +48,13 @@ app.use("/staff", require("./routes/staffroutes"));
 /* ---------- SERVER ---------- */
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const server = app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`Port ${PORT} in use, retrying...`);
+    setTimeout(() => server.listen(PORT), 1000);
+  }
 });
