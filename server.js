@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const session = require("express-session");
+const MongoStore = require("connect-mongo");
 const path = require("path");
 
 const app = express();
@@ -20,10 +21,14 @@ app.use(session({
   secret: "jino_secret",
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URI || "mongodb://127.0.0.1:27017/cgpa_portal"
+  }),
   cookie: {
     sameSite: "none",
     secure: true,
-    httpOnly: true
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24
   }
 }));
 
@@ -33,10 +38,10 @@ app.use(express.static(path.join(__dirname, "../cgpafinal")));
 /* ---------- DATABASE CONNECTION ---------- */
 mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/cgpa_portal")
 .then(() => {
-  console.log("MongoDB Connected");
+  console.log("MongoDB Connected to:", process.env.MONGO_URI ? "Atlas" : "Local");
 })
 .catch((err) => {
-  console.log("DB Error:", err);
+  console.log("DB Error:", err.message);
 });
 
 /* ---------- ROUTES ---------- */
@@ -74,11 +79,14 @@ app.get('/seed-hods', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+/* ---------- CHECK DB ---------- */
 app.get('/check-db', (req, res) => {
   const state = mongoose.connection.readyState;
   const states = {0:'disconnected', 1:'connected', 2:'connecting', 3:'disconnecting'};
-  res.json({ dbState: states[state] });
+  res.json({ dbState: states[state], uri: process.env.MONGO_URI ? "Atlas" : "Local" });
 });
+
 /* ---------- SERVER ---------- */
 const PORT = process.env.PORT || 3000;
 
