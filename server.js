@@ -74,7 +74,11 @@ app.get('/seed-hods', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
-
+app.get('/check-db', (req, res) => {
+  const state = mongoose.connection.readyState;
+  const states = {0:'disconnected', 1:'connected', 2:'connecting', 3:'disconnecting'};
+  res.json({ dbState: states[state] });
+});
 /* ---------- SERVER ---------- */
 const PORT = process.env.PORT || 3000;
 
