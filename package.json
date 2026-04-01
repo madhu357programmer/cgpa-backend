@@ -1,9 +1,14 @@
 {
+  "name": "cgpa-backend",
+  "version": "1.0.0",
+  "description": "CGPA backend service",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
-  }
-}
-{
+  },
+  "engines": {
+    "node": "22.x"
+  },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "connect-mongo": "^5.1.0",
