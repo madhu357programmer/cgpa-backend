@@ -12,7 +12,7 @@ app.use(express.json());
 
 /* ---------- CORS ---------- */
 app.use(cors({
-  origin: true,
+  origin: 'https://stellar-kulfi-629625.netlify.app',
   credentials: true
 }));
 
