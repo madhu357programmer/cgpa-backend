@@ -1,20 +1,19 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const cors = require("cors");
+const cors = require('cors');
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
 const path = require("path");
-
 const app = express();
-
-/* ---------- BODY PARSER ---------- */
-app.use(express.json());
-
+require("dotenv").config();
 /* ---------- CORS ---------- */
+app.set('trust proxy', 1);
 app.use(cors({
   origin: 'https://stellar-kulfi-629625.netlify.app',
   credentials: true
 }));
+/* ---------- BODY PARSER ---------- */
+app.use(express.json());
 
 /* ---------- SESSION ---------- */
 app.use(session({
@@ -48,8 +47,6 @@ mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/cgpa_portal
 app.use("/auth", require("./routes/authroutes"));
 app.use("/batch", require("./routes/batchroutes"));
 app.use("/staff", require("./routes/staffroutes"));
-
-/* ---------- SEED ROUTE (DELETE AFTER USE) ---------- */
 
 
 /* ---------- SERVER ---------- */
