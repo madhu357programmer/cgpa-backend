@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CGPA Calculator</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+body{font-family:system-ui,Arial;background:#f2f5f9;margin:18px}
+table{width:100%;min-width:950px;border-collapse:collapse;background:rgb(255, 255, 255);border-radius:12px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,.1);}
+th,td{border:1px solid #ccc;padding:6px;text-align:center;}
+th{background:#eaf0f6;font-weight:600;}
+th.sticky{position:sticky;top:0;background:#f7f7f7}
+input.gpa{width:70px;text-align:center}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+input[type=number]{-moz-appearance:textfield;}
+.btn{padding:10px 18px;background:linear-gradient(135deg,#67b0f9,#3d5781);color:white;border:none;border-radius:10px;cursor:pointer;font-weight:600;box-shadow:0 4px 10px rgba(0,0,0,.2);transition:.2s;}
+.btn:hover{transform:scale(1.05);}
+.btn.gray{background:#555;}
+.no-print{margin-bottom:10px}
+.hidden-col{display:none}
+.summary-table th,.summary-table td{border:1px solid #000;padding:4px;text-align:center}
+@media print{
+  .no-print{display:none}
+  .hidden-col{display:none}
+  #searchBar{display:none !important}
+  #statusBanner{display:none !important}
+  title{display:none}
+}
+@media print {
+    head title { display: none; }
+  }
+@media (max-width:768px){
+  table{font-size:12px;min-width:900px;}
+  input.gpa{width:50px;font-size:14px;}
+  th,td{padding:3px;}
+  h2,h3{font-size:16px;text-align:center;}
+  .no-print button,.no-print select,.no-print input[type=file]{width:100%;margin-bottom:6px;font-size:14px;}
+}
+.topHeader{position:relative;background:linear-gradient(135deg,#67b0f9,#3b63a4);color:rgb(218,219,228);padding:15px;border-radius:12px;margin-bottom:10px;}
+.collegeLogo{position:absolute;right:20px;top:15px;height:150px;}
+td[id^="cgpa"]{background:#e0f7fa;font-weight:700;color:#006064;}
+.popup-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:none;justify-content:center;align-items:center;z-index:20;}
+.popup{background:#fff;padding:20px;border-radius:12px;width:1000px;box-shadow:0 10px 40px rgba(0,0,0,.3);}
+.popup table{width:100%;margin-bottom:10px}
+.popup input,.popup select{width:70px;text-align:center;border-radius:6px;padding:4px}
+.popup h3{text-align:center;margin-top:0}
+body.dark{background:#121212;color:#e0e0e0;}
+body.dark table{background:#1e1e1e;box-shadow:none;}
+body.dark th{background:linear-gradient(135deg,#67b0f9,#3d5781);color:#fff;}
+body.dark td{border-color:#444;}
+body.dark input,body.dark select{background:#2a2a2a;color:white;border:1px solid #555;}
+body.dark .btn{background:linear-gradient(135deg,#333,#111);}
+body.dark td[id^="cgpa"]{background:#00363a;color:#80deea;}
+.page{animation:fadeIn .4s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(15px);}to{opacity:1;transform:translateY(0);}}
+.btn.red{background:linear-gradient(135deg,#f97676,#a33d3d);}
+/* Status banner */
+#statusBanner{
+  display:none;
+  padding:10px 16px;
+  border-radius:8px;
+  margin-bottom:10px;
+  font-weight:600;
+  font-size:14px;
+}
+#statusBanner.info{background:#e3f2fd;color:#0b5ed7;border:1px solid #90caf9;}
+#statusBanner.success{background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;}
+#statusBanner.warning{background:#fff3e0;color:#e65100;border:1px solid #ffcc80;}
+
+/* File upload area */
+#fileArea{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  background:white;
+  border:2px dashed #90b8f0;
+  border-radius:10px;
+  padding:8px 16px;
+  cursor:pointer;
+  transition:.2s;
+}
+#fileArea:hover{border-color:#0b5ed7;background:#f0f6ff;}
+#fileArea label{cursor:pointer;font-weight:600;color:#0b5ed7;font-size:14px;}
+#csvFile{display:none;}
+#currentBatchPill{
+  display:none;
+  background:#e3f2fd;
+  color:#0b5ed7;
+  border:1px solid #90caf9;
+  border-radius:20px;
+  padding:5px 14px;
+  font-size:13px;
+  font-weight:600;
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+
+<div class="topHeader">
+  <center>
+    <h2>Velammal Engineering College</h2>
+    <h3 id="deptHeader">Department of Information Technology</h3>
+    <h3 id="batchYear">Batch: Not Selected</h3>
+    <!-- Current batch pill shown after a batch is active -->
+    <span id="currentBatchPill"></span>
+  </center>
+  <img src="logo.png" class="collegeLogo">
+</div>
+
+<!-- Status banner for load/save feedback -->
+<div id="statusBanner"></div>
+
+<!-- Search bar -->
+<div id="searchBar" style="margin-bottom:10px;display:none;">
+  <input type="text" id="searchInput" placeholder="🔍 Search by name or reg no..." 
+    style="padding:10px;border-radius:8px;border:1px solid #90b8f0;width:300px;font-size:14px;"
+    oninput="filterStudents(this.value)">
+  <button class="btn gray" onclick="clearSearch()">✕ Clear</button>
+</div>
+<div class="no-print">
+  <button class="btn" onclick="setMode('main')">Main Page</button>
+  <button class="btn without" onclick="setMode('without')">Without Backlog</button>
+  <button class="btn with" onclick="setMode('with')">With Backlog</button>
+  <button class="btn gray" onclick="toggleDark()">🌙 Dark Mode</button>
+  <select id="pdfSemSelect">
+  <option value="0">All Semesters</option>
+  <option value="1">Sem 1</option>
+  <option value="2">Sem 2</option>
+  <option value="3">Sem 3</option>
+  <option value="4">Sem 4</option>
+  <option value="5">Sem 5</option>
+  <option value="6">Sem 6</option>
+  <option value="7">Sem 7</option>
+  <option value="8">Sem 8</option>
+</select>
+<button class="btn" onclick="saveAsPDF()">📄 Save as PDF</button>
+<button class="btn" onclick="clearAllData()">🗑️ Clear Data</button>
+<button class="btn" onclick="window.location.href='change-password.html'">🔑 Change Password</button>
+<button class="btn red" onclick="logout()">🚪 Logout</button>
+</div>
+
+<div class="no-print" id="mainControls">
+  <!-- File upload area — choosing a file auto-loads previous data for that batch -->
+  <div id="fileArea" onclick="document.getElementById('csvFile').click()">
+    <span>📂</span>
+    <label>Choose CSV File</label>
+    <span id="fileNameLabel" style="font-size:13px;color:#555;"></span>
+  </div>
+  <input type="file" id="csvFile" accept=".csv">
+
+  <button class="btn" onclick="editCredits()">Set Semester Credits</button>
+  <button id="printBtn" class="btn">Print (filled columns)</button>
+  <select id="semSelect">
+  <option value="1">Sem 1</option>
+  <option value="2">Sem 2</option>
+  <option value="3">Sem 3</option>
+  <option value="4">Sem 4</option>
+  <option value="5">Sem 5</option>
+  <option value="6">Sem 6</option>
+  <option value="7">Sem 7</option>
+  <option value="8">Sem 8</option>
+</select>
+<button id="printSemBtn" class="btn">Print Selected Semester</button>
+  <button id="summaryBtn" class="btn">Print Class Summary</button>
+</div>
+
+<div id="mainPage" class="page" style="overflow:auto">
+  <table id="gpaTable"></table>
+</div>
+<div id="withoutPage" class="page" style="display:none;overflow:auto">
+  <table id="gpaTableWithout"></table>
+</div>
+<div id="withPage" class="page" style="display:none;overflow:auto">
+  <table id="gpaTableWith"></table>
+</div>
+
+<!-- Arrear Popup -->
+<div class="popup-bg" id="arrearPopup">
+  <div class="popup">
+    <h3>Clear Arrear GPA</h3>
+<p style="color:#e65100;background:#fff3e0;padding:8px;border-radius:6px;font-size:13px;text-align:center;">
+  ⚠️ If a subject has 0 credits, do not enter it here.
+</p>
+    <table id="arrearTable">
+      <thead><tr><th>Credit</th><th>Grade</th><th>Remove</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <button class="btn" onclick="addArrearRow()">Add Subject</button>
+    <button class="btn" onclick="calculateArrearGPA()">Apply GPA</button>
+    <button class="btn gray" onclick="closePopup()">Cancel</button>
+  </div>
+</div>
+
+<script>
+const SEM_COUNT = 8;
+let SEM_CREDITS = Array(SEM_COUNT).fill(0);
+const LAST_BATCH_KEY = 'cgpa_last_batch'; // stores only the last batch name
+let students = [];
+let mode = 'main';
+let table = document.getElementById('gpaTable');
+const GRADE_POINTS = { O:10, "A+":9, A:8, "B+":7, B:6, C:5 };
+const GRADES = ["O","A+","A","B+","B","C"];
+let currentArrearStudent = null, currentArrearSemester = null;
+
+const SERVER_URL = 'https://cgpa-backend-dcn1.onrender.com';
+
+// ============================================================
+// STATUS BANNER
+// ============================================================
+function showStatus(msg, type = 'info', duration = 3000) {
+  const el = document.getElementById('statusBanner');
+  el.textContent = msg;
+  el.className = type;
+  el.style.display = 'block';
+  if (duration > 0) setTimeout(() => { el.style.display = 'none'; }, duration);
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+async function checkAuth() {
+  try {
+    const res = await fetch(`${SERVER_URL}/auth/check-session`, { credentials: "include" });
+    const data = await res.json();
+    if (!data.loggedIn) { window.location.href = "mainlogin.html"; return false; }
+    
+    // Update department header
+   if (data.user.department) {
+  const deptNames = {
+    'IT': 'Information Technology',
+    'CSE': 'Computer Science and Engineering',
+    'ECE': 'Electronics and Communication Engineering',
+    'EEE': 'Electrical and Electronics Engineering',
+    'MECH': 'Mechanical Engineering',
+    'CIVIL': 'Civil Engineering',
+    'CSECS': 'Computer Science and Engineering (Cyber Security)',
+    'AIDS': 'Artificial Intelligence and Data Science',
+    'MBA': 'Master of Business Administration',
+    'AUTOMOBILES': 'Automobile Engineering',
+    'E&I': 'Electronics and Instrumentation Engineering'
+  };
+  const fullName = deptNames[data.user.department] || data.user.department;
+  document.getElementById('deptHeader').textContent = `Department of ${fullName}`;
+} 
+    
+    return true;
+  } catch (e) {
+    console.error("Auth check failed:", e);
+    return false;
+  }
+}
+
+async function logout() {
+  await fetch(`${SERVER_URL}/auth/logout`, {
+    method: "POST",
+    credentials: "include"
+  });
+  window.location.href = "mainlogin.html";
+}
+
+// ============================================================
+// GET CURRENT BATCH NAME
+// ============================================================
+function getBatch() {
+  return document.getElementById('batchYear').textContent.replace('Batch: ', '').trim();
+}
+
+function setBatch(name) {
+  document.getElementById('batchYear').textContent = `Batch: ${name}`;
+  const pill = document.getElementById('currentBatchPill');
+  pill.textContent = `📋 Active: ${name}`;
+  pill.style.display = 'inline-block';
+  // Remember last worked batch
+  localStorage.setItem(LAST_BATCH_KEY, name);
+}
+
+// ============================================================
+// SAVE TO SERVER
+// ============================================================
+async function save() {
+  const batch = getBatch();
+  if (!batch || batch === 'Not Selected') return;
+
+  try {
+    // Ensure batch exists on server
+    await fetch(`${SERVER_URL}/batch/add`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ batch })
+    });
+
+    const res = await fetch(`${SERVER_URL}/batch/save/${encodeURIComponent(batch)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ students, credits: SEM_CREDITS })
+    });
+
+    if (res.ok) {
+      console.log("Saved to server.");
+    } else {
+      throw new Error('Save failed');
+    }
+  } catch(e) {
+    console.warn("Server save failed, falling back to localStorage", e);
+    // Fallback: save to localStorage under batch-specific key
+    localStorage.setItem(`cgpa_batch_${getBatch()}`, JSON.stringify({ students, credits: SEM_CREDITS }));
+  }
+}
+
+// ============================================================
+// LOAD FROM SERVER (for a specific batch name)
+// ============================================================
+async function loadBatchFromServer(batch) {
+    console.log("loadBatchFromServer called with:", batch);
+  try {
+    const res = await fetch(`${SERVER_URL}/batch/load/${encodeURIComponent(batch)}`, {
+      credentials: "include"
+    });
+    if (!res.ok) return false;
+
+    const data = await res.json();
+    if (data.students && data.students.length > 0) {
+      students = data.students;
+      SEM_CREDITS = data.credits || Array(SEM_COUNT).fill(0);
+      return true;
+    }
+    return false;
+  } catch(e) {
+    console.warn("Could not load from server:", e);
+    return false;
+  }
+}
+
+// Fallback: load from localStorage for this batch
+function loadBatchFromLocal(batch) {
+  const raw = localStorage.getItem(`cgpa_batch_${batch}`);
+  if (!raw) return false;
+  try {
+    const data = JSON.parse(raw);
+    students = data.students || [];
+    SEM_CREDITS = data.credits || Array(SEM_COUNT).fill(0);
+    return students.length > 0;
+  } catch(e) { return false; }
+}
+// ============================================================
+// PAGE LOAD — restore last worked batch automatically
+// ============================================================
+window.onload = async function() {
+  const isAuth = await checkAuth();
+  if (!isAuth) return;
+
+  // Try to restore the last batch the staff was working on
+  const lastBatch = localStorage.getItem(LAST_BATCH_KEY);
+  if (lastBatch) {
+    setBatch(lastBatch);
+    showStatus(`Restoring your last session: ${lastBatch}…`, 'info', 0);
+
+    const loaded = await loadBatchFromServer(lastBatch)
+                || loadBatchFromLocal(lastBatch);
+
+    if (loaded) {
+      renderTable();
+      showStatus(`✅ Previous data loaded for batch: ${lastBatch}`, 'success');
+    } else {
+      showStatus(`No previous data found for ${lastBatch}. Please upload a CSV file.`, 'warning');
+    }
+  } else {
+    showStatus('👆 Please choose a CSV file to get started.', 'info', 0);
+  }
+
+  // Auto-save every 30 seconds
+  setInterval(() => {
+    if (students.length > 0) save();
+  }, 30000);
+};
+
+// ============================================================
+// CSV FILE UPLOAD — extract batch from filename, load existing data first
+// ============================================================
+document.getElementById('csvFile').onchange = async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  document.getElementById('fileNameLabel').textContent = file.name;
+
+const raw = file.name.replace('.csv','');
+const m = raw.match(/([A-Za-z]+)(20\d{2})-(20\d{2})/);
+const batchName = m ? `${m[1].toUpperCase()}${m[2]}-${m[3]}` : raw;
+
+// Clear old data BEFORE loading new batch
+// Clear old data BEFORE loading new batch
+students = [];
+SEM_CREDITS = Array(SEM_COUNT).fill(0);
+setBatch(batchName);
+renderTable(); // show empty table while loading
+
+console.log("Batch set to:", batchName);
+console.log("Students cleared:", students.length);
+
+showStatus(`Checking server for existing data for ${batchName}…`, 'info', 0);
+
+const serverLoaded = await loadBatchFromServer(batchName);
+
+console.log("Server loaded:", serverLoaded);
+console.log("Students after load:", students.length);
+console.log("First student:", students[0]);
+
+  if (serverLoaded) {
+    // Previous data exists — use it, don't overwrite with CSV
+    renderTable();
+    showStatus(`✅ Previous data restored for ${batchName} (${students.length} students). Your work is intact.`, 'success');
+    return; // Don't parse CSV — existing data takes priority
+  }
+
+  // No existing data → parse the CSV as fresh students
+  const localLoaded = loadBatchFromLocal(batchName);
+  if (localLoaded) {
+    renderTable();
+    showStatus(`✅ Local backup restored for ${batchName} (${students.length} students).`, 'success');
+    return;
+  }
+
+  // Truly new batch — read CSV
+  showStatus(`No existing data found. Loading from CSV…`, 'info', 0);
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    const rows = ev.target.result
+      .replace(/\r/g, '')
+      .split('\n')
+      .filter(r => r.trim());
+
+    students = rows.slice(1).map((l, i) => {
+      const parts = l.includes(';') ? l.split(';') : l.split(',');
+      const [s, reg, n, sec] = parts;
+      return {
+        s_no: +s || i + 1,
+        reg_no: reg,
+        name: n,
+        section: sec,
+        gpas: Array(SEM_COUNT).fill(null),
+        arrear: false,
+        class: '',
+        cgpa: ''
+      };
+    });
+
+    renderTable();
+    await save(); // save the new batch to server immediately
+    showStatus(`✅ New batch created from CSV: ${batchName} (${students.length} students)`, 'success');
+  };
+  reader.readAsText(file);
+};
+
+// ============================================================
+// CLEAR ALL DATA
+// ============================================================
+function clearAllData() {
+  if (confirm("⚠️ Are you sure you want to clear ALL data for the current batch?")) {
+    const reconfirm = prompt('Type "DELETE" to confirm:');
+    if (reconfirm === "DELETE") {
+      students = [];
+      SEM_CREDITS = Array(SEM_COUNT).fill(0);
+      renderTable();
+      save();
+      localStorage.removeItem(`cgpa_batch_${getBatch()}`);
+      alert("All data cleared!");
+    } else {
+      alert("Cancelled! Data is safe. ✅");
+    }
+  }
+}
+// Calculate CGPA up to a specific semester
+function calcCgpaUpTo(student, upToSem) {
+  const gpas = student.gpas.slice(0, upToSem);
+  if (gpas.some(g => g === 0)) return '';
+  let pts = 0, cr = 0;
+  gpas.forEach((g, j) => {
+    if (g != null && SEM_CREDITS[j]) {
+      pts += Math.round(g * SEM_CREDITS[j] * 100) / 100;
+      cr += SEM_CREDITS[j];
+    }
+  });
+  if (!cr) return '';
+  const raw = pts / cr;
+  const three = Math.floor(raw * 1000) / 1000;
+  return (Math.round(three * 100) / 100).toFixed(2);
+}
+
+// Get class based on recalculated CGPA
+function calcClassUpTo(student, upToSem) {
+  const cgpa = calcCgpaUpTo(student, upToSem);
+  if (!cgpa) return '';
+  const c = parseFloat(cgpa);
+  if (c > 8.5 && !student.arrear) return 'First Class with Distinction';
+  if (c > 6.5) return 'First Class';
+  return 'Second Class';
+}
+// ============================================================
+// PDF EXPORT
+// ============================================================
+async function saveAsPDF() {
+  const { jsPDF } = window.jspdf;
+  const selected = parseInt(document.getElementById('pdfSemSelect').value);
+  const upToSem = selected === 0 ? SEM_COUNT : selected;
+  const doc = new jsPDF('l', 'mm', 'a4');
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text("Velammal Engineering College", 148, 15, { align: 'center' });
+  doc.setFontSize(13);
+  doc.text(document.getElementById('deptHeader').textContent, 148, 23, { align: 'center' });
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text(document.getElementById('batchYear').textContent, 148, 30, { align: 'center' });
+
+  const semHeaders = Array.from({length: upToSem}, (_, i) => `Sem${i+1}`);
+  const headers = [['S.No','Reg No','Name','Sec', ...semHeaders, 'CGPA','Class','Arrear']];
+
+  const rows = students.map(st => {
+    const cgpa = upToSem === SEM_COUNT ? (st.cgpa || '') : calcCgpaUpTo(st, upToSem);
+    const cls = upToSem === SEM_COUNT ? (st.class || '') : calcClassUpTo(st, upToSem);
+    return [
+      st.s_no,
+      st.reg_no,
+      st.name,
+      st.section,
+      ...st.gpas.slice(0, upToSem).map(g => g ?? ''),
+      cgpa,
+      cls,
+      st.arrear ? 'Yes' : 'No'
+    ];
+  });
+
+  const cgpaColIndex = 4 + upToSem;
+
+  doc.autoTable({
+    head: headers,
+    body: rows,
+    startY: 35,
+    styles: { fontSize: 7, cellPadding: 2, halign: 'center' },
+    headStyles: { fillColor: [11,94,215], textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 2: { halign: 'left', cellWidth: 35 } },
+    alternateRowStyles: { fillColor: [240,244,255] },
+    didParseCell: function(data) {
+      if (data.column.index === cgpaColIndex) {
+        data.cell.styles.fillColor = [224,247,250];
+        data.cell.styles.textColor = [0,96,100];
+        data.cell.styles.fontStyle = 'bold';
+      }
+    }
+  });
+
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(
+      `Page ${i} of ${pageCount} | Generated on ${new Date().toLocaleDateString()}`,
+      148, doc.internal.pageSize.height - 5, { align: 'center' }
+    );
+  }
+
+  const semLabel = upToSem === SEM_COUNT ? 'All' : `Sem1-${upToSem}`;
+  doc.save(`CGPA_Report_${getBatch()}_${semLabel}.pdf`);
+}
+
+// ============================================================
+// MODE SWITCHING
+// ============================================================
+function setMode(m) {
+  mode = m;
+  document.getElementById('mainPage').style.display = 'none';
+  document.getElementById('withoutPage').style.display = 'none';
+  document.getElementById('withPage').style.display = 'none';
+
+  if (m === 'main') {
+    table = document.getElementById('gpaTable');
+    let p = document.getElementById('mainPage');
+    p.style.display = 'block';
+    p.classList.remove('page'); void p.offsetWidth; p.classList.add('page');
+  }
+  if (m === 'without') {
+    table = document.getElementById('gpaTableWithout');
+    let p = document.getElementById('withoutPage');
+    p.style.display = 'block';
+    p.classList.remove('page'); void p.offsetWidth; p.classList.add('page');
+  }
+  if (m === 'with') {
+    table = document.getElementById('gpaTableWith');
+    let p = document.getElementById('withPage');
+    p.style.display = 'block';
+    p.classList.remove('page'); void p.offsetWidth; p.classList.add('page');
+  }
+
+  document.getElementById('mainControls').style.display = (m === 'main') ? 'block' : 'none';
+  renderTable();
+}
+
+// ============================================================
+// RENDER TABLE
+// ============================================================
+function renderTable() {
+  table.innerHTML = '';
+  const thead = document.createElement('thead');
+  const tr = document.createElement('tr');
+  ['S.No','Reg No','Name','Section'].forEach(h => {
+    const th = document.createElement('th'); th.textContent = h; th.className = 'sticky'; tr.appendChild(th);
+  });
+  for (let s = 1; s <= SEM_COUNT; s++) {
+    const th = document.createElement('th'); th.textContent = 'Sem ' + s; th.className = 'sticky'; th.dataset.sem = s; tr.appendChild(th);
+  }
+  ['CGPA','Class','Arrear'].forEach(h => {
+    const th = document.createElement('th'); th.textContent = h; th.className = 'sticky'; tr.appendChild(th);
+  });
+  thead.appendChild(tr); table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  students.forEach((st, ri) => {
+    if (mode === 'without' && hasBacklog(st)) return;
+    if (mode === 'with' && !hasBacklog(st)) return;
+
+    const row = document.createElement('tr');
+    [st.s_no, st.reg_no, st.name, st.section].forEach((v, i) => {
+  const td = document.createElement('td'); 
+  td.textContent = v; 
+  if (i === 2) td.style.textAlign = 'left'; // name column
+  row.appendChild(td);
+});
+
+    for (let s = 0; s < SEM_COUNT; s++) {
+      const td = document.createElement('td');
+      if (mode === 'main') {
+        const inp = document.createElement('input');
+        inp.type = 'number'; inp.className = 'gpa';
+        inp.min = 0; inp.max = 10; inp.step = 0.01;
+        inp.value = st.gpas[s] ?? '';
+        inp.dataset.r = ri; inp.dataset.s = s + 1;
+
+        inp.oninput = e => {
+          const v = parseFloat(e.target.value);
+          if (v > 10) { alert('GPA cannot exceed 10'); e.target.value = ''; return; }
+          st.gpas[s] = isFinite(v) ? v : null;
+          if (v === 0) st.arrear = true;
+          updateGrades(ri);
+        };
+        inp.onchange = () => { save(); };
+        inp.onkeydown = e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const next = document.querySelector(`input[data-r='${ri+1}'][data-s='${s+1}']`);
+            if (next) next.focus();
+          }
+        };
+        td.appendChild(inp);
+      } else {
+        td.textContent = st.gpas[s] ?? '';
+      }
+
+      if (st.gpas[s] === 0 && mode === 'with') {
+        const btn = document.createElement('button');
+        btn.textContent = 'Clear Arrear'; btn.className = 'btn gray';
+        btn.onclick = () => openArrearPopup(ri, s);
+        td.appendChild(btn);
+      }
+      row.appendChild(td);
+    }
+
+    const tdCg = document.createElement('td'); tdCg.id = 'cgpa-' + ri; tdCg.textContent = st.cgpa || ''; row.appendChild(tdCg);
+    const tdCl = document.createElement('td'); tdCl.id = 'class-' + ri; tdCl.textContent = st.class || ''; row.appendChild(tdCl);
+
+    const tdAr = document.createElement('td');
+    if (mode === 'main') {
+      const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = st.arrear;
+      chk.onchange = e => { st.arrear = e.target.checked; updateGrades(ri); save(); };
+      tdAr.appendChild(chk);
+    } else {
+      tdAr.textContent = hasBacklog(st) ? 'Yes' : 'No';
+    }
+    row.appendChild(tdAr);
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+
+  if (mode === 'main') {
+    const tfoot = document.createElement('tfoot');
+    const semRow = document.createElement('tr');
+    const lbl = document.createElement('td'); lbl.colSpan = 4; lbl.textContent = 'Class Average (per Semester)'; semRow.appendChild(lbl);
+    for (let i = 0; i < SEM_COUNT; i++) {
+      const td = document.createElement('td'); td.id = 'avg-s' + (i+1); semRow.appendChild(td);
+    }
+    semRow.appendChild(document.createElement('td'));
+    semRow.appendChild(document.createElement('td'));
+    semRow.appendChild(document.createElement('td'));
+    tfoot.appendChild(semRow);
+
+    const yearRow = document.createElement('tr');
+    const ylbl = document.createElement('td'); ylbl.colSpan = 4; ylbl.textContent = 'Class Average (per Year)'; yearRow.appendChild(ylbl);
+    for (let i = 0; i < SEM_COUNT; i++) {
+      const td = document.createElement('td'); td.id = 'avg-year-s' + (i+1); yearRow.appendChild(td);
+    }
+    yearRow.appendChild(document.createElement('td'));
+    yearRow.appendChild(document.createElement('td'));
+    yearRow.appendChild(document.createElement('td'));
+    tfoot.appendChild(yearRow);
+    table.appendChild(tfoot);
+    updateGrades();
+  }
+  // Show/hide search bar
+  document.getElementById('searchBar').style.display = 
+    (students.length > 0 && mode === 'main') ? 'block' : 'none';
+}
+
+function hasBacklog(st) { return st.arrear; }
+
+// ============================================================
+// UPDATE GRADES / CGPA
+// ============================================================
+function updateGrades(idx = null) {
+  students.forEach((st, i) => {
+    let pts = 0, cr = 0;
+    if (st.gpas.some(g => g === 0)) {
+      st.cgpa = ''; st.class = '';
+    } else {
+      st.gpas.forEach((g, j) => {
+        if (g != null) {
+          pts += Math.round(g * SEM_CREDITS[j] * 100) / 100;
+          cr += SEM_CREDITS[j];
+        }
+      });
+      const rawCgpa = pts / cr;
+      const threeDec = Math.floor(rawCgpa * 1000) / 1000;
+      st.cgpa = cr ? (Math.round(threeDec * 100) / 100).toFixed(2) : '';
+    }
+
+    if (st.cgpa) {
+      const c = parseFloat(st.cgpa);
+      if (c > 8.5 && !hasBacklog(st)) st.class = 'First Class with Distinction';
+      else if (c > 6.5) st.class = 'First Class';
+      else st.class = 'Second Class';
+    } else { st.class = ''; }
+
+    if (idx === null || idx === i) {
+      const cgEl = document.getElementById('cgpa-' + i); if (cgEl) cgEl.textContent = st.cgpa;
+      const clEl = document.getElementById('class-' + i); if (clEl) clEl.textContent = st.class;
+    }
+  });
+
+  for (let i = 0; i < SEM_COUNT; i++) {
+    const vals = students.map(st => st.gpas[i]).filter(v => v != null && v !== 0);
+    const td = document.getElementById('avg-s' + (i+1));
+    if (td) td.textContent = vals.length ? (vals.reduce((a,b) => a+b, 0) / vals.length).toFixed(2) : '';
+  }
+
+  const yearPairs = [[0,1],[2,3],[4,5],[6,7]];
+  yearPairs.forEach(pair => {
+    const all = [];
+    students.forEach(st => {
+      pair.forEach(idx => { if (st.gpas[idx] != null && st.gpas[idx] !== 0) all.push(st.gpas[idx]); });
+    });
+    const avg = all.length ? (all.reduce((a,b) => a+b, 0) / all.length).toFixed(2) : '';
+    const td1 = document.getElementById('avg-year-s' + (pair[0]+1));
+    const td2 = document.getElementById('avg-year-s' + (pair[1]+1));
+    if (td1) td1.textContent = avg;
+    if (td2) td2.textContent = '';
+  });
+}
+
+// ============================================================
+// CREDITS EDITOR
+// ============================================================
+function editCredits() {
+  for (let i = 0; i < SEM_COUNT; i++) {
+    let val = prompt(`Enter credits for Semester ${i+1}:`, SEM_CREDITS[i] || '');
+    if (val === null) return;
+    val = parseInt(val);
+    if (isNaN(val) || val <= 0) { alert("Enter a valid number for credits."); i--; }
+    else { SEM_CREDITS[i] = val; }
+  }
+  save();
+  renderTable();
+  alert("Semester credits updated successfully!");
+}
+
+// ============================================================
+// PRINT FUNCTIONS
+// ============================================================
+document.getElementById('printBtn').onclick = () => {
+  for (let s = 1; s <= SEM_COUNT; s++) {
+    if (!students.some(st => st.gpas[s-1] != null))
+      table.querySelectorAll(`[data-sem='${s}']`).forEach(td => td.classList.add('hidden-col'));
+  }
+  window.print();
+  for (let s = 1; s <= SEM_COUNT; s++) {
+    table.querySelectorAll(`[data-sem='${s}']`).forEach(td => {
+      td.style.display = '';
+    });
+  }
+};
+document.getElementById('printSemBtn').onclick = () => {
+  const upToSem = parseInt(document.getElementById('semSelect').value);
+  
+  let html = `
+    <style>
+      body{font-family:Arial;margin:20px}
+      h2,h3{text-align:center;margin:4px}
+      table{width:100%;border-collapse:collapse;font-size:11px}
+      th,td{border:1px solid #000;padding:5px;text-align:center}
+      th{background:#dce8f7;font-weight:600}
+      .name{text-align:left}
+      .cgpa{background:#e0f7fa;font-weight:700}
+      @page{size:A4 landscape;margin:10mm}
+    </style>
+    <h2>Velammal Engineering College</h2>
+    <h3>${document.getElementById('deptHeader').textContent}</h3>
+    <h3>${document.getElementById('batchYear').textContent}</h3>
+    <br>
+    <table>
+      <thead>
+        <tr>
+          <th>S.No</th>
+          <th>Reg No</th>
+          <th>Name</th>
+          <th>Section</th>
+          ${Array.from({length: upToSem}, (_, i) => `<th>Sem ${i+1}</th>`).join('')}
+          <th>CGPA</th>
+          <th>Class</th>
+          <th>Arrear</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  students.forEach(st => {
+    const cgpa = upToSem === SEM_COUNT ? (st.cgpa || '') : calcCgpaUpTo(st, upToSem);
+    const cls = upToSem === SEM_COUNT ? (st.class || '') : calcClassUpTo(st, upToSem);
+    html += `<tr>
+      <td>${st.s_no}</td>
+      <td>${st.reg_no}</td>
+      <td class="name">${st.name}</td>
+      <td>${st.section}</td>
+      ${Array.from({length: upToSem}, (_, i) => `<td>${st.gpas[i] ?? ''}</td>`).join('')}
+      <td class="cgpa">${cgpa}</td>
+      <td>${cls}</td>
+      <td>${st.arrear ? 'Yes' : 'No'}</td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+
+  const w = window.open('');
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  w.print();
+  w.close();
+};
+
+document.getElementById('summaryBtn').onclick = () => {
+  let d=0, f=0, s=0;
+  students.forEach(st => {
+    if (st.class === 'First Class with Distinction') d++;
+    else if (st.class === 'First Class') f++;
+    else if (st.class === 'Second Class') s++;
+  });
+  const w = window.open('');
+  w.document.write('<h3>Class Summary</h3>');
+  w.document.write('<table class="summary-table"><tr><th>S.No</th><th>Reg No</th><th>Name</th><th>Class</th></tr>');
+  students.forEach(st => {
+    w.document.write(`<tr><td>${st.s_no}</td><td>${st.reg_no}</td><td>${st.name}</td><td>${st.class}</td></tr>`);
+  });
+  w.document.write('</table>');
+  w.document.write(`<p>Distinction: ${d}</p><p>First Class: ${f}</p><p>Second Class: ${s}</p>`);
+  w.print(); w.close();
+};
+
+// ============================================================
+// ARREAR POPUP
+// ============================================================
+function openArrearPopup(i, s) {
+  currentArrearStudent = i; currentArrearSemester = s;
+  document.querySelector('#arrearTable tbody').innerHTML = '';
+  addArrearRow();
+  document.getElementById('arrearPopup').style.display = 'flex';
+}
+function closePopup() { document.getElementById('arrearPopup').style.display = 'none'; }
+
+function addArrearRow() {
+  const tr = document.createElement('tr');
+  const td1 = document.createElement('td');
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.min = 1;
+  inp.max = 4;
+  inp.value = 3;
+  inp.oninput = function() {
+    if (parseInt(this.value) > 4) {
+      this.value = 4;
+      alert('Credit cannot be more than 4!');
+    }
+    if (parseInt(this.value) < 1) {
+      this.value = 1;
+    }
+  };
+  td1.appendChild(inp); tr.appendChild(td1);
+  const td2 = document.createElement('td');
+  const sel = document.createElement('select');
+  GRADES.forEach(g => { const o = document.createElement('option'); o.value=g; o.textContent=g; sel.appendChild(o); });
+  td2.appendChild(sel); tr.appendChild(td2);
+  const td3 = document.createElement('td');
+  const b = document.createElement('button'); b.textContent='X'; b.className='btn gray'; b.onclick=()=>tr.remove();
+  td3.appendChild(b); tr.appendChild(td3);
+  document.querySelector('#arrearTable tbody').appendChild(tr);
+}
+
+function calculateArrearGPA() {
+  let pts=0, cr=0;
+  for (const r of document.querySelectorAll('#arrearTable tbody tr')) {
+    const c = parseInt(r.querySelector('input').value);
+    if (isNaN(c) || c < 1) { alert('Credit must be at least 1'); return; }
+    if (c > 5) { alert('Credit cannot be more than 5!'); return; }
+    const g = GRADE_POINTS[r.querySelector('select').value];
+    pts += c*g; cr += c;
+  }
+  const gpa = (pts/cr).toFixed(2);
+  students[currentArrearStudent].gpas[currentArrearSemester] = parseFloat(gpa);
+  updateGrades(currentArrearStudent);
+  save();
+  closePopup();
+}
+
+// ============================================================
+// DARK MODE
+// ============================================================
+function toggleDark() { document.body.classList.toggle("dark"); }
+function filterStudents(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('#gpaTable tbody tr').forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  filterStudents('');
+}
+</script>
+</body>
+</html>

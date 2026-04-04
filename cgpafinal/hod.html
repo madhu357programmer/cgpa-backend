@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HOD Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: 'Inter', sans-serif;
+      background:#f4f7fb;
+    }
+
+    /* Top Bar */
+    .topbar{
+      background:#0b5ed7;
+      color:white;
+      padding:15px 40px;
+      font-size:20px;
+      font-weight:600;
+    }
+
+    /* Layout */
+    .container{
+      display:flex;
+      height:calc(100vh - 60px);
+    }
+
+    /* Sidebar */
+    .sidebar{
+      width:220px;
+      background:#0a58ca;
+      color:white;
+      padding:20px;
+    }
+
+    .sidebar h4{
+      margin-top:0;
+      opacity:.9;
+    }
+
+    .menu{
+      margin-top:30px;
+    }
+
+   .menu a{
+  display:block;
+  text-decoration:none;
+  color:white;
+  padding:12px;
+  border-radius:6px;
+  margin-bottom:10px;
+}
+
+    .menu a:hover{
+  background:rgba(255,255,255,0.15);
+}
+
+    /* Main Content */
+    .main{
+  flex:1;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+
+    .card{
+      background:white;
+      width:420px;
+      padding:30px;
+      border-radius:12px;
+      box-shadow:0 8px 20px rgba(0,0,0,.08);
+    }
+
+    .card h3{
+      margin-top:0;
+      margin-bottom:20px;
+      color:#0b5ed7;
+    }
+
+    input, select{
+      width:100%;
+      padding:12px;
+      margin:10px 0;
+      border:1px solid #ccc;
+      border-radius:6px;
+      font-size:14px;
+    }
+
+    input:focus, select:focus{
+      outline:none;
+      border-color:#0b5ed7;
+    }
+
+    button{
+      width:100%;
+      background:#0b5ed7;
+      color:white;
+      border:none;
+      padding:12px;
+      border-radius:6px;
+      font-size:15px;
+      font-weight:600;
+      cursor:pointer;
+      margin-top:10px;
+    }
+
+    button:hover{
+      background:#084298;
+    }
+
+    #msg{
+      margin-top:15px;
+      font-weight:600;
+    }
+
+    .hint{
+      font-size:12px;
+      color:#666;
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  HOD Portal – Staff Management
+</div>
+
+<div class="container">
+
+  <div class="sidebar">
+    <h4>Dashboard</h4>
+   <div class="menu">
+  <a href="hod.html">Create Staff</a>
+  <a href="view-staff.html">View Staff</a>
+  <a href="reset-password.html">Reset Password</a>
+  <a href="hod-cgpa.html">View CGPA Data</a> 
+  <a href="hod-change-password.html">Change My Password</a>
+  <a href="#" onclick="logout()">Logout</a>
+</div>
+
+  </div>
+
+  <div class="main">
+    <div class="card">
+      <h3>Create Staff Account</h3>
+
+      <input id="newUser" placeholder="Staff Username (e.g. it_john)">
+      <input id="newPass" type="password" placeholder="Password">
+
+      <select id="dept" required>
+        <option value="" disabled selected>Select Department</option>
+        <option>IT</option>
+        <option>CSE</option>
+        <option>EEE</option>
+        <option>ECE</option>
+        <option>CSECS</option>
+        <option>E&I</option>
+        <option>MECH</option>
+        <option>CIVIL</option>
+        <option>AUTOMOBILES</option>
+        <option>AIDS</option>
+        <option>MBA</option>
+      </select>
+
+      <div class="hint">
+        Username must include department (example: <b>cse_arun</b>)
+      </div>
+
+      <button onclick="createStaff()">Create Account</button>
+      <p id="msg"></p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SERVER_URL = 'https://cgpa-backend-dcn1.onrender.com';
+
+async function createStaff(){
+  const u = newUser.value.toLowerCase();
+  const p = newPass.value;
+  const d = dept.value;
+
+  if(!u || !p || !d){
+    msg.textContent = "All fields are required.";
+    msg.style.color = "red";
+    return;
+  }
+
+  if(!u.includes(d.toLowerCase())){
+    msg.textContent = "Username must include department name!";
+    msg.style.color = "red";
+    return;
+  }
+
+  const res = await fetch(`${SERVER_URL}/staff/create`,{
+    method:"POST",
+    credentials: "include",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      username:u,
+      password:p,
+      department:d
+    })
+  });
+  const data = await res.json();
+  if(res.ok){
+    msg.textContent = "Staff created successfully!";
+    msg.style.color = "green";
+  }else{
+    msg.textContent = data.message || "Error creating staff";
+    msg.style.color = "red";
+  }
+}
+
+async function loadHodDepartment() {
+  try {
+    const res = await fetch(`${SERVER_URL}/auth/check-session`, {
+      credentials: "include"
+    });
+    const data = await res.json();
+
+    if (!data.loggedIn || data.user.role !== "hod") {
+      window.location.href = "mainlogin.html";
+      return;
+    }
+
+    const dept = data.user.department;
+    const deptSelect = document.getElementById('dept');
+    deptSelect.innerHTML = `<option value="${dept}">${dept}</option>`;
+    deptSelect.disabled = true;
+
+  } catch(e) {
+    window.location.href = "mainlogin.html";
+  }
+}
+
+loadHodDepartment();
+
+async function logout() {
+  await fetch(`${SERVER_URL}/auth/logout`, {
+    method: "POST",
+    credentials: "include"
+  });
+  localStorage.removeItem("user");
+  window.location.href = "mainlogin.html";
+}
+</script>
+
+</body>
+</html>

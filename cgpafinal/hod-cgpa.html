@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HOD - CGPA View</title>
+<style>
+body{margin:0;font-family:Inter;background:#f4f7fb}
+.topbar{background:#0b5ed7;color:white;padding:15px 40px;font-size:20px;font-weight:600}
+.container{display:flex;height:calc(100vh - 60px)}
+.sidebar{width:220px;background:#0a58ca;color:white;padding:20px}
+.menu a{display:block;color:white;text-decoration:none;padding:12px;border-radius:6px;margin-bottom:10px}
+.menu a:hover{background:rgba(255,255,255,0.15)}
+.main{flex:1;padding:30px;overflow:auto}
+.controls{display:flex;gap:10px;margin-bottom:20px;align-items:center}
+select{padding:10px;border-radius:6px;border:1px solid #ccc;font-size:14px}
+button{padding:10px 20px;background:#0b5ed7;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer}
+button:hover{background:#084298}
+table{width:100%;border-collapse:collapse;background:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.08);overflow:hidden}
+th,td{padding:10px;text-align:center;border:1px solid #eee}
+th{background:#0b5ed7;color:white}
+tr:hover{background:#f0f4ff}
+td[class="cgpa"]{background:#e0f7fa;font-weight:700;color:#006064}
+.no-data{text-align:center;padding:40px;color:#999}
+.badge{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.distinction{background:#e8f5e9;color:#2e7d32}
+.first{background:#e3f2fd;color:#0b5ed7}
+.second{background:#fff3e0;color:#e65100}
+</style>
+</head>
+<body>
+
+<div class="topbar">HOD Portal – CGPA Data View</div>
+
+<div class="container">
+  <div class="sidebar">
+    <div class="menu">
+      <a href="hod.html">Create Staff</a>
+      <a href="view-staff.html">View Staff</a>
+      <a href="reset-password.html">Reset Password</a>
+      <a href="hod-cgpa.html">View CGPA Data</a>
+       <a href="hod-change-password.html">Change My Password</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="controls">
+  <select id="batchSelect">
+    <option value="">-- Select Batch --</option>
+  </select>
+  <button onclick="loadData()">Load Data</button>
+  <button onclick="deleteBatch()" style="background:#dc3545">🗑️ Delete Batch</button>
+  <span id="status" style="color:#666;font-size:14px"></span>
+</div>
+
+    <div id="tableContainer">
+      <p class="no-data">Select a batch and click Load Data</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVER_URL = 'https://cgpa-backend-dcn1.onrender.com';
+// Load all batches into dropdown
+async function loadBatches() {
+  try {
+    const res = await fetch(`${SERVER_URL}/batch/list`, {
+      credentials: "include"
+    });
+    const data = await res.json();
+    const select = document.getElementById('batchSelect');
+    data.batches.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b;
+      opt.textContent = b;
+      select.appendChild(opt);
+    });
+  } catch(e) {
+    console.error("Could not load batches", e);
+  }
+}
+
+// Load CGPA data for selected batch
+async function loadData() {
+  const batch = document.getElementById('batchSelect').value;
+  if (!batch) {
+    alert("Please select a batch first!");
+    return;
+  }
+
+  document.getElementById('status').textContent = "Loading...";
+
+  try {
+    const res = await fetch(`${SERVER_URL}/batch/load/${encodeURIComponent(batch)}`, {
+      credentials: "include"
+    });
+    const data = await res.json();
+
+    if (!data.students || data.students.length === 0) {
+      document.getElementById('tableContainer').innerHTML = 
+        '<p class="no-data">No data found for this batch</p>';
+      document.getElementById('status').textContent = "";
+      return;
+    }
+
+    renderTable(data.students, data.credits);
+    document.getElementById('status').textContent = 
+      `${data.students.length} students loaded`;
+
+  } catch(e) {
+    document.getElementById('status').textContent = "Error loading data";
+  }
+}
+async function deleteBatch() {
+  const batch = document.getElementById('batchSelect').value;
+  if (!batch) {
+    alert("Please select a batch first!");
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to delete batch "${batch}"?\nThis will delete ALL student data!`)) return;
+
+  const reconfirm = prompt('Type "DELETE" to confirm:');
+  if (reconfirm !== "DELETE") {
+    alert("Cancelled! Batch is safe. ✅");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${SERVER_URL}/batch/delete/${encodeURIComponent(batch)}`, {
+      method: "DELETE",
+      credentials: "include"
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`Batch "${batch}" deleted successfully!`);
+      // Remove from dropdown
+      const select = document.getElementById('batchSelect');
+      select.remove(select.selectedIndex);
+      select.value = '';
+      document.getElementById('tableContainer').innerHTML = '<p class="no-data">Select a batch and click Load Data</p>';
+      document.getElementById('status').textContent = '';
+    } else {
+      alert(data.message || "Error deleting batch");
+    }
+  } catch(e) {
+    alert("Could not connect to server");
+  }
+}
+async function deleteBatch() {
+  const batch = document.getElementById('batchSelect').value;
+  if (!batch) {
+    alert("Please select a batch first!");
+    return;
+  }
+  if (!confirm(`Are you sure you want to delete batch "${batch}"?\nThis cannot be undone!`)) return;
+  const reconfirm = prompt('Type "DELETE" to confirm:');
+  if (reconfirm !== "DELETE") {
+    alert("Cancelled! Batch is safe. ✅");
+    return;
+  }
+  try {
+    const res = await fetch(`${SERVER_URL}/batch/delete/${encodeURIComponent(batch)}`, {
+      method: "DELETE",
+      credentials: "include"
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`Batch "${batch}" deleted successfully!`);
+      document.getElementById('tableContainer').innerHTML = '<p class="no-data">Select a batch and click Load Data</p>';
+      // Reload batch list
+      const select = document.getElementById('batchSelect');
+      select.innerHTML = '<option value="">-- Select Batch --</option>';
+      loadBatches();
+    } else {
+      alert(data.message || "Error deleting batch");
+    }
+  } catch(e) {
+    alert("Could not connect to server");
+  }
+}
+function renderTable(students, credits) {
+  const SEM_COUNT = 8;
+  let html = `
+    <table>
+      <thead>
+        <tr>
+          <th>S.No</th>
+          <th>Reg No</th>
+          <th>Name</th>
+          <th>Section</th>
+          ${Array.from({length: SEM_COUNT}, (_, i) => `<th>Sem ${i+1}</th>`).join('')}
+          <th>CGPA</th>
+          <th>Class</th>
+          <th>Arrear</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  students.forEach((st, i) => {
+    // Calculate CGPA
+    let pts = 0, cr = 0;
+    let hasZero = st.gpas.some(g => g === 0);
+    
+    if (!hasZero) {
+      st.gpas.forEach((g, j) => {
+        if (g != null && credits[j]) {
+          pts += g * credits[j];
+          cr += credits[j];
+        }
+      });
+    }
+
+    const cgpa = cr ? (pts / cr).toFixed(2) : '';
+    let cls = '';
+    if (cgpa) {
+      const c = parseFloat(cgpa);
+      if (c > 8.5 && !st.arrear) cls = 'First Class with Distinction';
+      else if (c > 6.5) cls = 'First Class';
+      else cls = 'Second Class';
+    }
+
+    const clsBadge = cls === 'First Class with Distinction' ? 'distinction' :
+                     cls === 'First Class' ? 'first' : 
+                     cls === 'Second Class' ? 'second' : '';
+
+    html += `
+      <tr>
+        <td>${st.s_no}</td>
+        <td>${st.reg_no}</td>
+        <td style="text-align:left">${st.name}</td>
+        <td>${st.section}</td>
+        ${st.gpas.map(g => `<td>${g ?? ''}</td>`).join('')}
+        <td class="cgpa">${cgpa}</td>
+        <td>${cls ? `<span class="badge ${clsBadge}">${cls}</span>` : ''}</td>
+        <td>${st.arrear ? '⚠️ Yes' : 'No'}</td>
+      </tr>
+    `;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('tableContainer').innerHTML = html;
+}
+
+
+async function logout() {
+  await fetch(`${SERVER_URL}/auth/logout`, {
+    method: "POST",
+    credentials: "include"
+  });
+  window.location.href = "mainlogin.html";
+}
+
+// Load batches when page opens
+loadBatches();
+</script>
+</body>
+</html>

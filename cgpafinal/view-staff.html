@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>View Staff</title>
+<style>
+body{margin:0;font-family:Inter;background:#f4f7fb}
+.topbar{background:#0b5ed7;color:white;padding:15px 40px;font-size:20px;font-weight:600}
+.container{display:flex;height:calc(100vh - 60px)}
+.sidebar{width:220px;background:#0a58ca;color:white;padding:20px}
+.menu a{display:block;color:white;text-decoration:none;padding:12px;border-radius:6px;margin-bottom:10px}
+.menu a:hover{background:rgba(255,255,255,0.15)}
+.main{flex:1;padding:30px;overflow:auto}
+table{width:100%;border-collapse:collapse;background:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.08)}
+th,td{padding:12px;text-align:left;border-bottom:1px solid #eee}
+th{background:#0b5ed7;color:white}
+tr:hover{background:#f0f4ff}
+.badge{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.staff{background:#e3f2fd;color:#0b5ed7}
+.hod{background:#e8f5e9;color:#2e7d32}
+</style>
+</head>
+
+<body>
+<div class="topbar">HOD Portal – View Staff</div>
+
+<div class="container">
+  <div class="sidebar">
+    <div class="menu">
+      <a href="hod.html">Create Staff</a>
+      <a href="view-staff.html">View Staff</a>
+      <a href="reset-password.html">Reset Password</a>
+      <a href="hod-cgpa.html">View CGPA Data</a> 
+      <a href="hod-change-password.html">Change My Password</a>
+      <a href="#" onclick="logout()">Logout</a>
+    </div>
+  </div>
+
+  <div class="main">
+    <h3>Staff List</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Username</th>
+          <th>Department</th>
+          <th>Role</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="staffList">
+        <tr><td colspan="4" style="text-align:center">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const SERVER_URL = 'https://cgpa-backend-dcn1.onrender.com';
+
+async function loadStaff() {
+  try {
+    const res = await fetch(`${SERVER_URL}/staff/view`, {
+      credentials: "include"
+    });
+    const data = await res.json();
+    const tbody = document.getElementById("staffList");
+    if(data.length === 0){
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center">No staff found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map((s, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${s.username}</td>
+        <td>${s.department}</td>
+        <td><span class="badge ${s.role}">${s.role.toUpperCase()}</span></td>
+        <td>
+          <button onclick="deleteStaff('${s.username}')" 
+            style="background:#dc3545;color:white;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:600">
+            🗑️ Delete
+          </button>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    document.getElementById("staffList").innerHTML = 
+      '<tr><td colspan="4" style="text-align:center;color:red">Could not load staff</td></tr>';
+  }
+}
+
+loadStaff();
+
+async function logout() {
+  await fetch(`${SERVER_URL}/auth/logout`, {
+    method: "POST",
+    credentials: "include"
+  });
+  window.location.href = "mainlogin.html";
+}
+
+async function deleteStaff(username) {
+  if (!confirm(`Are you sure you want to delete "${username}"?`)) return;
+  try {
+    const res = await fetch(`${SERVER_URL}/staff/delete/${username}`, {
+      method: "DELETE",
+      credentials: "include"
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert("Staff deleted successfully!");
+      loadStaff();
+    } else {
+      alert(data.message || "Error deleting staff");
+    }
+  } catch(e) {
+    alert("Could not connect to server");
+  }
+}
+</script>
+</body>
+</html>
