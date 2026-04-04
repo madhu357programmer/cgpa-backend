@@ -32,7 +32,7 @@ app.use(session({
 }));
 
 /* ---------- SERVE FRONTEND FILES ---------- */
-app.use(express.static(path.join(__dirname, "../cgpafinal")));
+app.use(express.static(path.join(__dirname, "cgpafinal")));
 
 /* ---------- DATABASE CONNECTION ---------- */
 mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/cgpa_portal")
